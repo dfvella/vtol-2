@@ -1,67 +1,36 @@
 #include <Arduino.h>
 
-#include "pwm_schedular.h"
+#include "pwm_driver.h"
 
-//#define DO_PRINTS
+//#define COMMAND_MOTORS
 
-PWMSchedular pwm;
-
-unsigned long timer = 0;
+Pwm pwm;
 
 void setup()
 {
-    #ifdef DO_PRINTS
-    Serial.begin(9600);
-    #endif
-
     pwm.begin();
-
-    timer = micros();
 }
 
 void loop()
 {
-    static uint16_t signal = 1000;
-    static uint32_t counter = 0;
-
-    if (counter >= 500)
-        counter = 0;
-
-    if (counter < 250)
-        signal += 5;
-    else
-        signal -= 5;
+    pwm.set_right_aileron(RIGHT_AILERON_MIN_PULSE);
+    pwm.set_left_aileron(LEFT_AILERON_MIN_PULSE);
 
     pwm.set_right_motor(RIGHT_MOTOR_MIN_PULSE);
     pwm.set_left_motor(LEFT_MOTOR_MIN_PULSE);
 
-    pwm.set_right_tilt(signal);
-    pwm.set_left_tilt(signal);
-    pwm.set_right_aileron(signal);
-    pwm.set_left_aileron(signal);
-    pwm.set_elevator(signal);
+    delay(1000);
 
-    #ifdef DO_PRINTS
-    Serial.print(pwm.get_right_motor());
-    Serial.print(' ');
-    Serial.print(pwm.get_right_tilt());
-    Serial.print(' ');
-    Serial.print(pwm.get_right_aileron());
-    Serial.print(' ');
-    Serial.print(pwm.get_left_motor());
-    Serial.print(' ');
-    Serial.print(pwm.get_left_tilt());
-    Serial.print(' ');
-    Serial.print(pwm.get_left_aileron());
-    Serial.print(' ');
-    Serial.print(pwm.get_elevator());
-    Serial.println();
+    pwm.set_right_aileron(RIGHT_AILERON_MAX_PULSE);
+    pwm.set_left_aileron(LEFT_AILERON_MAX_PULSE);
+
+    #ifdef COMMAND_MOTORS
+    pwm.set_right_motor(RIGHT_MOTOR_MAX_PULSE);
+    pwm.set_left_motor(LEFT_MOTOR_MAX_PULSE);
+    #else
+    pwm.set_right_motor(RIGHT_MOTOR_MIN_PULSE);
+    pwm.set_left_motor(LEFT_MOTOR_MIN_PULSE);
     #endif
 
-    pwm.write();
-
-    ++counter;
-
-    while (micros() - timer < 20000);
-    timer = micros();
+    delay(1000);
 }
