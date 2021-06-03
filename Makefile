@@ -27,3 +27,7 @@ endef
 $(TESTS):
 	$(foreach file, $(get_depends), $(shell cp flight_controller/$(file) $@/))
 	$(CXX) $(FLAGS) $@/$@.ino
+
+
+.PHONY: all
+all: flight_controller $(TESTS)

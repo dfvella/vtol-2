@@ -6,14 +6,14 @@
 
 #include "serial_logger.h"
 
-#define ENABLE_SERVOS
+#define COMMAND_ACTUATORS
 
-#define RADIO_PIN 3
+#define RADIO_PIN 2
 
 unsigned long timer = 0;
 const int LOOP_TIME = 5000; // microseconds
 
-Radio radio(RADIO_PIN);
+Radio radio { RADIO_PIN };
 
 PWMSchedular pwm;
 
@@ -76,13 +76,12 @@ void loop()
         break;
 
     case Controller_State::SERVOSET:
+        #ifdef COMMAND_ACTUATORS
         pwm.set_right_motor(controller_output.right_motor);
-        pwm.set_right_tilt(controller_output.right_tilt);
         pwm.set_right_aileron(controller_output.right_alr);
         pwm.set_left_motor(controller_output.left_motor);
-        pwm.set_left_tilt(controller_output.left_tilt);
         pwm.set_left_aileron(controller_output.left_alr);
-        pwm.set_elevator(controller_output.elevator);
+        #endif
 
         #ifdef DO_LOGGING_50HZ
         print_log()
@@ -92,9 +91,7 @@ void loop()
         break;
 
     case Controller_State::SERVOWRITE:
-        #ifdef ENABLE_SERVOS
         pwm.write();
-        #endif 
 
         state = Controller_State::PPMSYNC;
         break;

@@ -48,14 +48,14 @@
 #define NEUTRAL_THROTTLE 1000
 
 // vertical mode pid gains
-#define ROLL_P_VERTICAL 10 // was 7
+#define ROLL_P_VERTICAL 2 // was 7
 #define ROLL_I_VERTICAL 0
-#define ROLL_D_VERTICAL 4 // was 3
+#define ROLL_D_VERTICAL 3 // was 3
 #define ROLL_I_MAX_VERTICAL 1
 
-#define PITCH_P_VERTICAL 11 // was 13
+#define PITCH_P_VERTICAL 8 // was 13
 #define PITCH_I_VERTICAL 0
-#define PITCH_D_VERTICAL 6 // was 4
+#define PITCH_D_VERTICAL 3 // was 4
 #define PITCH_I_MAX_VERTICAL 1
 
 #define YAW_P_VERTICAL 8 // was 6
@@ -100,18 +100,17 @@
 #define PITCH_PID_TRIM 0
 #define YAW_PID_TRIM 0
 
-// servo throw
-#define MIN_ELEVATOR_THROW 1200
-#define CENTER_ELEVATOR 1500
-#define MAX_ELEVATOR_THROW 1800
+#define FORWARD_ROLL_TRIM 0
+#define FORWARD_YAW_TRIM 0
+#define FORWARD_PITCH_TRIM 0
 
-#define MIN_RIGHT_ALR_THROW 1200
-#define CENTER_RIGHT_ALR 1500
-#define MAX_RIGHT_ALR_THROW 1800
+#define SLOW_ROLL_TRIM 0
+#define SLOW_YAW_TRIM 0
+#define SLOW_PITCH_TRIM 0
 
-#define MIN_LEFT_ALR_THROW 1200
-#define CENTER_LEFT_ALR 1500
-#define MAX_LEFT_ALR_THROW 1800
+#define VERTICAL_ROLL_TRIM 0
+#define VERTICAL_YAW_TRIM 0
+#define VERTICAL_PITCH_TRIM 0
 
 // flight mode transition
 #define TILT_TRANSITION_DAMPER 10
@@ -179,9 +178,10 @@ public:
 
     struct Output
     {
-        uint16_t right_motor, right_tilt, right_alr;
-        uint16_t left_motor, left_tilt, left_alr;
-        uint16_t elevator;
+        uint16_t right_motor;
+        uint16_t right_alr;
+        uint16_t left_motor;
+        uint16_t left_alr;
     };
 
     void calculate_outputs(Input& input, Output& output);
@@ -200,7 +200,6 @@ public:
 
     Control_Mode get_control_mode();
     Flight_Mode get_flight_mode();
-    int16_t get_transition_state();
 
 private:
     void determine_flight_mode(const Input& input);
@@ -224,9 +223,9 @@ private:
 
     FIR_Filter::Response input_response = {
         //0.2, 0.2, 0.2, 0.2, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0
-        0.3, 0.2, 0.2, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0
+        //0.3, 0.2, 0.2, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0
         //0.3, 0.3, 0.2, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-        //0.5, 0.3, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        0.5, 0.3, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         //1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     };
 
@@ -237,11 +236,6 @@ private:
     float target_roll = 0;
     float target_pitch = 0;
     float target_yaw = 0;
-
-    int16_t transition_state = 0;
-
-    uint16_t right_tilt_last = NEUTRAL_STICK;
-    uint16_t left_tilt_last = NEUTRAL_STICK;
 };
 
 #endif // FLIGHT_CONTROLLER_H

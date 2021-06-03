@@ -25,90 +25,13 @@ void Flight_Controller::calculate_outputs(Input& input, Output& output)
 
 void Flight_Controller::determine_flight_mode(const Input& input)
 {
-    // determine the requested flight mode
-    Flight_Mode target_flight_mode = Flight_Mode::VERTICAL;
+    flight_mode = Flight_Mode::VERTICAL;
 
     if (input.gear < SWITCH_POS2)
-        target_flight_mode = Flight_Mode::SLOW;
+        flight_mode = Flight_Mode::SLOW;
     
     if (input.gear < SWITCH_POS1)
-        target_flight_mode = Flight_Mode::FORWARD;
-
-    // determine the required flight mode
-    switch (flight_mode)
-    {
-    case Flight_Mode::TO_FORWARD:
-        if (target_flight_mode != Flight_Mode::FORWARD)
-            flight_mode = Flight_Mode::TO_SLOW;
-        else if (transition_state == -TRANSITION_TIME)
-            flight_mode = Flight_Mode::FORWARD;
-        break;
-
-    case Flight_Mode::FORWARD:
-        if (target_flight_mode != Flight_Mode::FORWARD)
-            flight_mode = Flight_Mode::TO_SLOW;
-        break;
-
-    case Flight_Mode::TO_SLOW:
-        if (target_flight_mode == Flight_Mode::FORWARD && transition_state < 0)
-                flight_mode = Flight_Mode::TO_FORWARD;
-        else if (target_flight_mode == Flight_Mode::VERTICAL && transition_state > 0)
-            flight_mode = Flight_Mode::TO_VERTICAL;
-        else if (transition_state == 0)
-            flight_mode = Flight_Mode::SLOW;
-        break;
-
-    case Flight_Mode::SLOW:
-        if (target_flight_mode == Flight_Mode::FORWARD)
-            flight_mode = Flight_Mode::TO_FORWARD;
-
-        if (target_flight_mode == Flight_Mode::VERTICAL)
-            flight_mode = Flight_Mode::TO_VERTICAL;
-        break;
-
-    case Flight_Mode::TO_VERTICAL:
-        if (target_flight_mode != Flight_Mode::VERTICAL)
-            flight_mode = Flight_Mode::TO_SLOW;
-        else if (transition_state == TRANSITION_TIME)
-            flight_mode = Flight_Mode::VERTICAL;
-        break;
-
-    case Flight_Mode::VERTICAL:
-        if (target_flight_mode != Flight_Mode::VERTICAL)
-            flight_mode = Flight_Mode::TO_SLOW;
-        break;
-    }
-
-    // update transition state
-    switch (flight_mode)
-    {
-    case Flight_Mode::TO_FORWARD:
-        --transition_state;
-        break;
-
-    case Flight_Mode::FORWARD:
-        transition_state = -TRANSITION_TIME;
-        break;
-
-    case Flight_Mode::TO_SLOW:
-        if (transition_state > 0)
-            --transition_state;
-        else if (transition_state < 0)
-            ++transition_state;
-        break;
-
-    case Flight_Mode::SLOW:
-        transition_state = 0;
-        break;
-
-    case Flight_Mode::TO_VERTICAL:
-        ++transition_state;
-        break;
-
-    case Flight_Mode::VERTICAL:
-        transition_state = TRANSITION_TIME;
-        break;
-    }
+        flight_mode = Flight_Mode::FORWARD;
 }
 
 void Flight_Controller::determine_control_mode(const Input& input)
@@ -229,26 +152,7 @@ void Flight_Controller::calculate_targets(Input& input)
 
 void Flight_Controller::map_outputs(Input& input, Output& output)
 {
-    // set the output motor tilt based on flight mode
-    if (flight_mode == Flight_Mode::TO_FORWARD || flight_mode == Flight_Mode::FORWARD)
-    {
-        output.right_tilt = FORWARD_RIGHT_TILT;
-        output.left_tilt = FORWARD_LEFT_TILT;
-    }
-    else if (flight_mode == Flight_Mode::TO_SLOW || flight_mode == Flight_Mode::SLOW)
-    {
-        output.right_tilt = SLOW_RIGHT_TILT;
-        output.left_tilt = SLOW_LEFT_TILT;
-    }
-    else
-    {
-        output.right_tilt = VERTICAL_RIGHT_TILT;
-        output.left_tilt = VERTICAL_LEFT_TILT;
-    }
-
-    // set other outputs based on current motor tilt
-    if (transition_state < 0)
-    // currently in, or transitioning to or from forward flight
+    if (flight_mode == Flight_Mode::FORWARD)
     {
         output.right_motor = input.throttle;
         output.left_motor = input.throttle;
@@ -259,26 +163,22 @@ void Flight_Controller::map_outputs(Input& input, Output& output)
         output.right_alr = (2 * NEUTRAL_STICK) - (int16_t)input.roll;
         output.left_alr = (2 * NEUTRAL_STICK) - (int16_t)input.roll;
 
-        output.elevator = NEUTRAL_STICK + (NEUTRAL_STICK - (int16_t)input.pitch);
+        output.right_alr += NEUTRAL_STICK - (int16_t)input.pitch;
+        output.left_alr -= NEUTRAL_STICK - (int16_t)input.pitch;
     }
-    else if (0 <= transition_state && transition_state < TRANSITION_TIME)
-    // currently in slow flight or transitioning to or from vertical flight
+    else if (flight_mode == Flight_Mode::SLOW)
     {
-        // add aileron into mix thrust differential
         output.right_motor = input.throttle;
         output.left_motor = input.throttle;
 
-        output.right_motor -= SLOW_YAW_DIFFERENTIAL * (NEUTRAL_STICK - (int16_t)input.yaw);
-        output.left_motor += SLOW_YAW_DIFFERENTIAL * (NEUTRAL_STICK - (int16_t)input.yaw);
+        output.right_motor -= VERTICAL_ROLL_DIFFERENTIAL * (NEUTRAL_STICK - (int16_t)input.roll);
+        output.left_motor += VERTICAL_ROLL_DIFFERENTIAL * (NEUTRAL_STICK - (int16_t)input.roll);
 
-        output.right_alr = (2 * NEUTRAL_STICK) - (int16_t)input.roll + SLOW_FLAPS_TRIM;
-        output.left_alr = (2 * NEUTRAL_STICK) - (int16_t)input.roll - SLOW_FLAPS_TRIM;
+        output.right_alr = (2 * NEUTRAL_STICK) - (int16_t)input.roll;
+        output.left_alr = (2 * NEUTRAL_STICK) - (int16_t)input.roll;
 
-        // add elevator into tilt?
-        //output.right_tilt = SLOW_RIGHT_TILT;
-        //output.left_tilt = SLOW_LEFT_TILT;
-
-        output.elevator = NEUTRAL_STICK + (NEUTRAL_STICK - (int16_t)input.pitch);
+        output.right_alr += NEUTRAL_STICK - (int16_t)input.pitch;
+        output.left_alr -= NEUTRAL_STICK - (int16_t)input.pitch;
     }
     else // currently in vertical flight mode
     {
@@ -288,18 +188,11 @@ void Flight_Controller::map_outputs(Input& input, Output& output)
         output.right_motor -= VERTICAL_ROLL_DIFFERENTIAL * (NEUTRAL_STICK - (int16_t)input.roll);
         output.left_motor += VERTICAL_ROLL_DIFFERENTIAL * (NEUTRAL_STICK - (int16_t)input.roll);
 
-        output.right_alr = NEUTRAL_STICK + VERTICAL_FLAPS_TRIM;
-        output.left_alr = NEUTRAL_STICK - VERTICAL_FLAPS_TRIM;
+        output.right_alr = input.yaw;
+        output.left_alr = input.yaw;
 
-        output.right_tilt += (VERTICAL_YAW_MOTOR_TILT * (NEUTRAL_STICK - (int16_t)input.yaw));
-        output.right_tilt += (VERTICAL_PITCH_MOTOR_TILT * (NEUTRAL_STICK - (int16_t)input.pitch));
-        output.right_tilt -= VERTICAL_YAW_TRIM;
-
-        output.left_tilt += (VERTICAL_YAW_MOTOR_TILT * (NEUTRAL_STICK - (int16_t)input.yaw));
-        output.left_tilt -= (VERTICAL_PITCH_MOTOR_TILT * (NEUTRAL_STICK - (int16_t)input.pitch));
-        output.left_tilt -= VERTICAL_YAW_TRIM;
-
-        output.elevator = NEUTRAL_STICK;
+        output.right_alr += NEUTRAL_STICK - (int16_t)input.pitch;
+        output.left_alr -= NEUTRAL_STICK - (int16_t)input.pitch;
     }
 
     // for safety: make sure only to spin up motors when throttle is applied.
@@ -310,31 +203,6 @@ void Flight_Controller::map_outputs(Input& input, Output& output)
         output.right_motor = RIGHT_MOTOR_MIN_PULSE;
         output.left_motor = LEFT_MOTOR_MIN_PULSE;
     }
-
-    // dampen the tilt servos when transitioning between flight modes
-    if (flight_mode == Flight_Mode::TO_FORWARD ||
-        flight_mode == Flight_Mode::TO_SLOW ||
-        flight_mode == Flight_Mode::TO_VERTICAL)
-    {
-        uint16_t right_tilt_damper;
-        uint16_t left_tilt_damper;
-
-        if (transition_state < 0) // tilt position currently between slow and forward
-        {
-            right_tilt_damper = (SLOW_RIGHT_TILT - FORWARD_RIGHT_TILT) / TRANSITION_TIME;
-            left_tilt_damper = (FORWARD_LEFT_TILT - SLOW_LEFT_TILT) / TRANSITION_TIME;
-        }
-        else
-        {
-            right_tilt_damper = (VERTICAL_RIGHT_TILT - SLOW_RIGHT_TILT) / TRANSITION_TIME;
-            left_tilt_damper = (SLOW_LEFT_TILT - VERTICAL_LEFT_TILT) / TRANSITION_TIME;
-        }
-
-        output.right_tilt = constrain(output.right_tilt, right_tilt_last - right_tilt_damper, right_tilt_last + right_tilt_damper);
-        output.left_tilt = constrain(output.left_tilt, left_tilt_last - left_tilt_damper, left_tilt_last + left_tilt_damper);
-    }
-    right_tilt_last = output.right_tilt;
-    left_tilt_last = output.left_tilt;
 }
 
 float Flight_Controller::get_target_roll()
@@ -390,11 +258,6 @@ Control_Mode Flight_Controller::get_control_mode()
 Flight_Mode Flight_Controller::get_flight_mode()
 {
     return flight_mode;
-}
-
-int16_t Flight_Controller::get_transition_state()
-{
-    return transition_state;
 }
 
 float Flight_Controller::interpolate(

@@ -22,6 +22,7 @@
 //#define PRINT_CONTROLLER_TARGETS
 //#define PRINT_CONTROLLER_ERROR
 //#define PRINT_CONTROLLER_OUTPUTS
+//#define PRINT_PWM_OUTPUTS
 //#define PRINT_FLIGHT_MODE
 //#define PRINT_CONTROL_MODE
 
@@ -78,17 +79,17 @@
 #ifdef PRINT_PPM_INPUTS
     #define DO_LOGGING
     #define print_ppm_inputs() \
-        Serial.print(ppm.get(ppmDecoder::ARL)); \
+        Serial.print(radio.arl()); \
         Serial.print(' '); \
-        Serial.print(ppm.get(ppmDecoder::ELE)); \
+        Serial.print(radio.ele()); \
         Serial.print(' '); \
-        Serial.print(ppm.get(ppmDecoder::THR)); \
+        Serial.print(radio.thr()); \
         Serial.print(' '); \
-        Serial.print(ppm.get(ppmDecoder::RUD)); \
+        Serial.print(radio.rud()); \
         Serial.print(' '); \
-        Serial.print(ppm.get(ppmDecoder::GER)); \
+        Serial.print(radio.ger()); \
         Serial.print(' '); \
-        Serial.print(ppm.get(ppmDecoder::AUX)); \
+        Serial.print(radio.aux()); \
         Serial.print(' ');
 #else 
     #define print_ppm_inputs()
@@ -173,28 +174,35 @@
     #define print_controller_outputs() \
         Serial.print(controller_output.right_motor); \
         Serial.print(' '); \
-        Serial.print(controller_output.right_tilt); \
-        Serial.print(' '); \
         Serial.print(controller_output.right_alr); \
         Serial.print(' '); \
         Serial.print(controller_output.left_motor); \
         Serial.print(' '); \
-        Serial.print(controller_output.left_tilt); \
-        Serial.print(' '); \
         Serial.print(controller_output.left_alr); \
-        Serial.print(' '); \
-        Serial.print(controller_output.elevator); \
         Serial.print(' ');
 #else 
     #define print_controller_outputs()
+#endif
+
+#ifdef PRINT_PWM_OUTPUTS
+    #define DO_LOGGING
+    #define print_pwm_outputs() \
+        Serial.print(pwm.get_right_motor()); \
+        Serial.print(' '); \
+        Serial.print(pwm.get_right_aileron()); \
+        Serial.print(' '); \
+        Serial.print(pwm.get_left_motor()); \
+        Serial.print(' '); \
+        Serial.print(pwm.get_left_aileron()); \
+        Serial.print(' ');
+#else
+    #define print_pwm_outputs()
 #endif
 
 #ifdef PRINT_FLIGHT_MODE
     #define DO_LOGGING
     #define print_flight_mode() \
         Serial.print((uint8_t)flight_controller.get_flight_mode()); \
-        Serial.print(' '); \
-        Serial.print(flight_controller.get_transition_state()); \
         Serial.print(' ');
 #else 
     #define print_flight_mode()
@@ -225,6 +233,7 @@
     print_yaw_error() \
     print_controller_error() \
     print_controller_outputs() \
+    print_pwm_outputs() \
     print_flight_mode() \
     print_control_mode() \
     Serial.println();

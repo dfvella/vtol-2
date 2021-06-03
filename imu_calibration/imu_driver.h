@@ -9,9 +9,9 @@
 // fast blink - calibrating (do not move)
 
 // ********** ACCELEROMETER CALIBRATION **********
-#define ACCELX_LEVEL_READING -9
-#define ACCELY_LEVEL_READING -44
-#define ACCELZ_LEVEL_READING 1125
+#define ACCELX_LEVEL_READING 175.0
+#define ACCELY_LEVEL_READING -80.0
+#define ACCELZ_LEVEL_READING 1185.0
 
 // ********** FILTER GAINS **********
 #define ACCEL_FILTER_GAIN 0.1
