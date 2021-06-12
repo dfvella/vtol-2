@@ -6,7 +6,7 @@
 
 #include "serial_logger.h"
 
-#define COMMAND_ACTUATORS
+#define ENABLE_ACTUATORS
 
 #define RADIO_PIN 2
 
@@ -34,7 +34,9 @@ void setup()
 
     radio.begin();
 
+    #ifdef ENABLE_ACTUATORS
     pwm.begin();
+    #endif
 
     digitalWrite(LED_BUILTIN, LOW);
 
@@ -76,7 +78,7 @@ void loop()
         break;
 
     case Controller_State::SERVOSET:
-        #ifdef COMMAND_ACTUATORS
+        #ifdef ENABLE_ACTUATORS
         pwm.set_right_motor(controller_output.right_motor);
         pwm.set_right_aileron(controller_output.right_alr);
         pwm.set_left_motor(controller_output.left_motor);

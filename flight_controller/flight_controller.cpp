@@ -116,6 +116,19 @@ void Flight_Controller::calculate_targets(Input& input)
             -AUTO_MAX_YAW_RATE, AUTO_MAX_YAW_RATE
         );
         target_yaw = constrain_target(target_yaw, imu.yaw(), AUTO_MAX_YAW_ERROR);
+
+        target_roll = constrain(target_roll,
+            target_roll_last - AUTOLEVEL_TARGET_DAMPER,
+            target_roll_last + AUTOLEVEL_TARGET_DAMPER
+        );
+        target_pitch = constrain(target_pitch,
+            target_pitch_last - AUTOLEVEL_TARGET_DAMPER,
+            target_pitch_last + AUTOLEVEL_TARGET_DAMPER
+        );
+        target_yaw = constrain(target_yaw,
+            target_yaw_last - AUTOLEVEL_TARGET_DAMPER,
+            target_yaw_last + AUTOLEVEL_TARGET_DAMPER
+        );
         break;
 
     case Control_Mode::RATE:
@@ -148,6 +161,10 @@ void Flight_Controller::calculate_targets(Input& input)
     target_pitch = constrain(target_pitch, -60, 60);
     target_roll = constrain_angle(target_roll);
     target_yaw = constrain_angle(target_yaw);
+
+    target_roll_last = target_roll;
+    target_pitch_last = target_pitch;
+    target_yaw_last = target_yaw;
 }
 
 void Flight_Controller::map_outputs(Input& input, Output& output)

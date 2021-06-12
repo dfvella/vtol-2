@@ -48,9 +48,9 @@
 #define NEUTRAL_THROTTLE 1000
 
 // vertical mode pid gains
-#define ROLL_P_VERTICAL 2 // was 7
+#define ROLL_P_VERTICAL 1 // was 7
 #define ROLL_I_VERTICAL 0
-#define ROLL_D_VERTICAL 3 // was 3
+#define ROLL_D_VERTICAL 2 // was 3
 #define ROLL_I_MAX_VERTICAL 1
 
 #define PITCH_P_VERTICAL 8 // was 13
@@ -225,8 +225,8 @@ private:
         //0.2, 0.2, 0.2, 0.2, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0
         //0.3, 0.2, 0.2, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0
         //0.3, 0.3, 0.2, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-        0.5, 0.3, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-        //1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        //0.5, 0.3, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     };
 
     FIR_Filter input_roll_filter{ input_response };
@@ -236,6 +236,12 @@ private:
     float target_roll = 0;
     float target_pitch = 0;
     float target_yaw = 0;
+
+    float target_roll_last = 0;
+    float target_pitch_last = 0;
+    float target_yaw_last = 0;
+
+    static constexpr int16_t AUTOLEVEL_TARGET_DAMPER = 2;
 };
 
 #endif // FLIGHT_CONTROLLER_H

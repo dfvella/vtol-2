@@ -1,6 +1,6 @@
 CXX = arduino
-BOARD = arduino:avr:nano
-PORT = /dev/ttyUSB0
+BOARD = arduino:avr:uno
+PORT = /dev/ttyACM0
 
 # if USB port is found, then set flags so the board is flashed
 FLAGS = --board $(BOARD)

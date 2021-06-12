@@ -2,7 +2,7 @@
 
 #include "radio_driver.h"
 
-#define RADIO_PIN 3
+#define RADIO_PIN 2
 #define LOOP_FREQ 50 // Hz
 
 Radio radio(RADIO_PIN);
