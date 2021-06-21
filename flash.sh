@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DEVICE_PATH=/dev/sdb1
+DEVICE_PATH=/dev/sda1
 MOUNT_PATH=/mnt/pico
 
 TARGET_PATH=build/src/main

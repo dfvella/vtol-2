@@ -12,18 +12,7 @@
 #   include <stdio.h>
 #endif
 
-#define STATUS_LED_PIN 25
-#define I2C_BAUD_RATE_HZ 400 * 1000
-
-#define I2C_SDA_PIN 20
-#define I2C_SCL_PIN 21
-
-#define AR610_THRO_PIN 1
-#define AR610_AILE_PIN 3
-#define AR610_ELEV_PIN 5
-#define AR610_RUDD_PIN 7
-#define AR610_GEAR_PIN 9
-#define AR610_AUX1_PIN 11
+#include "constants.h"
 
 enum fc_flags {
     IMU_CONNECTED = 1,
@@ -96,7 +85,7 @@ int main() {
         ar610_update_state(&ar610);
 
         uint16_t pulse = ar610_get_aile(&ar610);
-        printf("%d\n",pulse);
+        //printf("%d\n",pulse);
 
         if (ar610_is_connected(&ar610)) {
             pwm_set_right_elevon(pulse);
