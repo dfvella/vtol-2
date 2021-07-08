@@ -1,42 +1,6 @@
 #include "mpu6050.h"
 
 /*
- * returns the magnitude of vector v
- */
-static float vector_norm(const vector_t* v) {
-    return sqrt(v->x * v->x + v->y * v->y + v->z * v->z);
-}
-
-/*
- * returns the magnitude of quaternion q
- */
-static float quaternion_norm(const quaternion_t* q) {
-    return sqrt(q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z);
-}
-
-/*
- * returns the product of two unit quaternions
- */
-static quaternion_t quaternion_product(const quaternion_t* p, const quaternion_t* q) {
-    quaternion_t result = {
-        .w = p->w * q->w - p->x * q->x - p->y * q->y - p->z * q->z,
-        .x = p->w * q->x + p->x * q->w + p->y * q->z - p->z * q->y,
-        .y = p->w * q->y - p->x * q->z + p->y * q->w + p->z * q->x,
-        .z = p->w * q->z + p->x * q->y - p->y * q->x + p->z * q->w
-    };
-
-    /* scale for noise reduction */
-    float l = quaternion_norm(&result);
-
-    result.w /= l;
-    result.x /= l;
-    result.y /= l;
-    result.x /= l;
-
-    return result;
-}
-
-/*
  * Configures mpu6050 power management and sensor accuracy.
  * Returns 0 if successfull
  * Returns 1 if there is no i2c response
@@ -184,6 +148,8 @@ int mpu6050_init(mpu6050_inst_t* inst, i2c_inst_t* i2c, uint pin) {
 
     inst->i2c = i2c;
 
+    inst->start = 1;
+
     inst->orientation.w = 0.70710;
     inst->orientation.x = 0.70710;
     inst->orientation.y = 0.00001;
@@ -222,25 +188,8 @@ int mpu6050_init(mpu6050_inst_t* inst, i2c_inst_t* i2c, uint pin) {
     angle_y_accel /= -MPU6050_RADIANS_PER_DEGREE;
 
     #ifdef MPU6050_CAL_GRAVITY_ZERO
-
-    quaternion_t initial_roll = {
-        .w = cos(angle_x_accel * MPU6050_RADIANS_PER_DEGREE * 0.5), 
-        .x = sin(angle_x_accel * MPU6050_RADIANS_PER_DEGREE * 0.5),
-        .y = 0.0001,
-        .z = 0.0001
-    };
-
-    inst->orientation = quaternion_product(&inst->orientation, &initial_roll);
-
-    quaternion_t initial_pitch = {
-        .w = cos(angle_y_accel * MPU6050_RADIANS_PER_DEGREE * 0.5), 
-        .x = 0.0001, 
-        .y = sin(angle_y_accel * MPU6050_RADIANS_PER_DEGREE * 0.5), 
-        .z = 0.0001 
-    };
-
-    inst->orientation = quaternion_product(&inst->orientation, &initial_pitch);
-
+    inst->orientation = quaternion_rotate_roll(&inst->orientation, angle_x_accel);
+    inst->orientation = quaternion_rotate_pitch(&inst->orientation, angle_y_accel);
     #endif /* MPU6050_CAL_GRAVITY_ZERO */
 
     gpio_put(inst->led_pin, 0);
@@ -311,10 +260,8 @@ int mpu6050_update_state(mpu6050_inst_t* inst) {
     if (mpu6050_fetch(inst))
         return 1;
 
-    static uint8_t start = 1;
-
-    if (start)  {
-        start = 0;
+    if (inst->start)  {
+        inst->start = 0;
         inst->timer = get_absolute_time();
     } else {
         /* units: seconds */
@@ -350,23 +297,18 @@ int mpu6050_update_state(mpu6050_inst_t* inst) {
 }
 
 /*
+ * Returns the quaternion used internally by the mpu6050 to track orientation
+ */
+quaternion_t mpu6050_get_quaternion(const mpu6050_inst_t *inst) {
+    return inst->orientation;
+}
+
+/*
  * Returns the roll angle in degrees
  * -180 < roll < 180
  */
-float mpu6050_get_roll(mpu6050_inst_t* inst) {
-    float result = atan2(
-        2 * inst->orientation.x * inst->orientation.w -
-        2 * inst->orientation.y * inst->orientation.z,
-        1 - 2 * inst->orientation.x * inst->orientation.x -
-        2 * inst->orientation.z * inst->orientation.z
-    );
-
-    result /= MPU6050_RADIANS_PER_DEGREE;
-
-    if (result < -90) 
-        result += 270;
-    else 
-        result -= 90;
+float mpu6050_get_roll(const mpu6050_inst_t* inst) {
+    float result = quaternion_get_roll(&inst->orientation);
 
     #ifdef MPU6050_INVERT_ROLL
     result *= -1;
@@ -379,13 +321,8 @@ float mpu6050_get_roll(mpu6050_inst_t* inst) {
  * Returns the pitch angle in degrees
  * -90 < pitch < 90
  */
-float mpu6050_get_pitch(mpu6050_inst_t* inst) {
-    float result = asin(
-        2 * inst->orientation.x * inst->orientation.y +
-        2 * inst->orientation.z * inst->orientation.w
-    );
-
-    result /= MPU6050_RADIANS_PER_DEGREE;
+float mpu6050_get_pitch(const mpu6050_inst_t* inst) {
+    float result = quaternion_get_pitch(&inst->orientation);
 
     #ifdef MPU6050_INVERT_PITCH
     result *= -1;
@@ -398,15 +335,8 @@ float mpu6050_get_pitch(mpu6050_inst_t* inst) {
  * Returns the yaw angle in degrees
  * -180 < yaw < 180
  */
-float mpu6050_get_yaw(mpu6050_inst_t* inst) {
-    float result = atan2(
-        2 * inst->orientation.y * inst->orientation.w -
-        2 * inst->orientation.x * inst->orientation.z,
-        1 - 2 * inst->orientation.y * inst->orientation.y -
-        2 * inst->orientation.z * inst->orientation.z
-    );
-
-    result /= MPU6050_RADIANS_PER_DEGREE;
+float mpu6050_get_yaw(const mpu6050_inst_t* inst) {
+    float result = quaternion_get_yaw(&inst->orientation);
 
     #ifdef MPU6050_INVERT_YAW
     result *= -1;

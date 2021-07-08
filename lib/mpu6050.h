@@ -2,7 +2,7 @@
 #define __MPU6050_H__
 
 #include <stdlib.h>
-#include <math.h>
+#include <3dmath.h>
 
 #include "pico/stdlib.h"
 #include "pico/time.h"
@@ -52,7 +52,7 @@ extern "C" {
 #define MPU6050_REG_ACCEL_XOUT_H 0x3B
 
 /* units: microseconds */
-#define MPU6050_I2C_TIMEOUT_PRE_BYTE 100
+#define MPU6050_I2C_TIMEOUT_PRE_BYTE 150
 
 /********** MPU6050 POWER SETTINGS **********/
 #define MPU6050_COMMAND_POWER_ON 0b00000000
@@ -73,24 +73,6 @@ extern "C" {
 #define MPU6050_RADIANS_PER_DEGREE 0.01745329f
 #define MPU6050_DEGREES_PER_TICK 0.0152672f
 #define MPU6050_TICKS_PER_G 4096
-
-
-struct quaternion {
-    float w;
-    float x;
-    float y;
-    float z;
-};
-
-typedef struct quaternion quaternion_t;
-
-struct vector {
-    float x;
-    float y;
-    float z;
-};
-
-typedef struct vector vector_t;
 
 /*
 * object for containing mpu6050 raw sensor data
@@ -125,6 +107,8 @@ struct mpu6050_inst {
     i2c_inst_t *i2c;
 
     uint led_pin;
+
+    uint8_t start;
 };
 
 /*
@@ -155,22 +139,27 @@ int mpu6050_avg_reading(mpu6050_inst_t* inst, mpu6050_data_t* data, uint16_t n);
 int mpu6050_update_state(mpu6050_inst_t *inst);
 
 /*
+ * Returns the quaternion used internally by the mpu6050 to track orientation
+ */
+quaternion_t mpu6050_get_quaternion(const mpu6050_inst_t *inst);
+
+/*
  * Returns the roll angle in degrees
  * -180 < roll < 180
  */
-float mpu6050_get_roll(mpu6050_inst_t *inst);
+float mpu6050_get_roll(const mpu6050_inst_t *inst);
 
 /*
  * Returns the roll pitch in degrees
- * -180 < pitch < 180
+ * -90 < pitch < 90
  */
-float mpu6050_get_pitch(mpu6050_inst_t *inst);
+float mpu6050_get_pitch(const mpu6050_inst_t *inst);
 
 /*
  * Returns the yaw angle in degrees
  * -180 < yaw < 180
  */
-float mpu6050_get_yaw(mpu6050_inst_t *inst);
+float mpu6050_get_yaw(const mpu6050_inst_t *inst);
 
 #ifdef __cplusplus
 }

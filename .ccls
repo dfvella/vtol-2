@@ -1,0 +1,5 @@
+%compile_commands.json
+-target
+arm-none-eabi
+-isystem/usr/lib/gcc/arm-none-eabi/11.1.0/include
+-isystem/usr/arm-none-eabi/include

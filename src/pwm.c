@@ -2,8 +2,19 @@
 
 static uint32_t counter_wrap;
 
+// helper function for linear interpolation
+static inline float interpolate(
+    float val,
+    float min_from,
+    float max_from,
+    float min_to,
+    float max_to
+) {
+    return (((val - min_from) / (max_from - min_from)) * (max_to - min_to)) + min_to;
+}
+
 // convert PWM pulse width in microseconds to 32 bit integer to compare
-// with counter
+// with the PWM counter
 static inline uint32_t pwm_pulse_width_to_level(uint16_t pulse_width) {
     return (pulse_width / PWM_PERIOD_US) * counter_wrap;
 }
@@ -17,6 +28,7 @@ static void pwm_set_wrap(PIO pio, uint sm, uint32_t period) {
     pio_sm_set_enabled(pio, sm, true);
 }
 
+// Initialize gpio pins and PIO state machines
 void pwm_init_all_outputs() {
     counter_wrap = clock_get_hz(clk_sys) / (PWM_CYCLES * PWM_FREQUENCY);
 
@@ -34,67 +46,80 @@ void pwm_init_all_outputs() {
     pwm_set_wrap(pio0, PWM_SM_LEFT_MOTOR, counter_wrap);
 }
 
-void pwm_set_right_elevon(uint16_t pulse_width) {
+// Input is a number between -100 and 100.
+// An input of -100 commands the servo to the min throw position
+// An input of 100 commands the servo to the max thro position
+void pwm_set_right_elevon(float input) {
+    uint16_t pulse_width;
+
+#   if PWM_REVERSE_RIGHT_ELEVON == 1
+        input *= -1;
+#   endif
+
+    if (input < PWM_CEN_INPUT) {
+        pulse_width = (uint16_t)interpolate(input,
+            PWM_MIN_INPUT, PWM_CEN_INPUT,
+            PWM_RIGHT_ELEVON_MIN, PWM_RIGHT_ELEVON_CEN
+        );
+    } else {
+        pulse_width = (uint16_t)interpolate(input,
+            PWM_CEN_INPUT, PWM_MAX_INPUT,
+            PWM_RIGHT_ELEVON_CEN, PWM_RIGHT_ELEVON_MAX
+        );
+    }
+
     uint32_t level = pwm_pulse_width_to_level(pulse_width);
     pio_sm_put(pio0, PWM_SM_RIGHT_ELEVON, level);
 }
 
-void pwm_set_left_elevon(uint16_t pulse_width) {
+// Input is a number between -100 and 100.
+// An input of -100 commands the servo to the min throw position
+// An input of 100 commands the servo to the max thro position
+void pwm_set_left_elevon(float input) {
+    uint16_t pulse_width;
+
+#   if PWM_REVERSE_LEFT_ELEVON == 1
+        input *= -1;
+#   endif
+
+    if (input < PWM_CEN_INPUT) {
+        pulse_width = (uint16_t)interpolate(input,
+            PWM_MIN_INPUT, PWM_CEN_INPUT,
+            PWM_LEFT_ELEVON_MIN, PWM_LEFT_ELEVON_CEN
+        );
+    } else {
+        pulse_width = (uint16_t)interpolate(input,
+            PWM_CEN_INPUT, PWM_MAX_INPUT,
+            PWM_LEFT_ELEVON_CEN, PWM_LEFT_ELEVON_MAX
+        );
+    }
+
     uint32_t level = pwm_pulse_width_to_level(pulse_width);
     pio_sm_put(pio0, PWM_SM_LEFT_ELEVON, level);
 }
 
-void pwm_set_right_motor(uint16_t pulse_width) {
+// Input is a number between -100 and 100.
+// An input of -100 commands the motor to not turn
+// An input of 100 commands the motor to turn at max speed
+void pwm_set_right_motor(float input) {
+    uint16_t pulse_width = (uint16_t)interpolate(input,
+        PWM_MIN_INPUT, PWM_MAX_INPUT,
+        PWM_RIGHT_MOTOR_MIN, PWM_RIGHT_MOTOR_MAX
+    );
+
     uint32_t level = pwm_pulse_width_to_level(pulse_width);
     pio_sm_put(pio0, PWM_SM_RIGHT_MOTOR, level);
 }
 
-void pwm_set_left_motor(uint16_t pulse_width) {
+// Input is a number between -100 and 100.
+// An input of -100 commands the motor to not turn
+// An input of 100 commands the motor to turn at max speed
+void pwm_set_left_motor(float input) {
+    uint16_t pulse_width = (uint16_t)interpolate(input,
+        PWM_MIN_INPUT, PWM_MAX_INPUT,
+        PWM_LEFT_MOTOR_MIN, PWM_LEFT_MOTOR_MAX
+    );
+
     uint32_t level = pwm_pulse_width_to_level(pulse_width);
     pio_sm_put(pio0, PWM_SM_LEFT_MOTOR, level);
 }
-
-//void pwm_init_all_outputs() {
-//    gpio_set_function(RIGHT_ELEVON_PIN, GPIO_FUNC_PWM);
-//    gpio_set_function(LEFT_ELEVON_PIN, GPIO_FUNC_PWM);
-//    gpio_set_function(RIGHT_MOTOR_PIN, GPIO_FUNC_PWM);
-//    gpio_set_function(LEFT_MOTOR_PIN, GPIO_FUNC_PWM);
-//
-//    wrap = (clock_get_hz(clk_sys) / PWM_CLOCK_DIVIDER) / PWM_FREQUENCY;
-//
-//    slice_elevon = pwm_gpio_to_slice_num(RIGHT_ELEVON_PIN);
-//    pwm_set_clkdiv(slice_elevon, PWM_CLOCK_DIVIDER);
-//    pwm_set_wrap(slice_elevon, wrap);
-//    pwm_set_chan_level(slice_elevon, PWM_CHAN_A, 0);
-//    pwm_set_chan_level(slice_elevon, PWM_CHAN_B, 0);
-//    pwm_set_enabled(slice_elevon, true);
-//
-//    slice_motor = pwm_gpio_to_slice_num(RIGHT_MOTOR_PIN);
-//    pwm_set_clkdiv(slice_motor, PWM_CLOCK_DIVIDER);
-//    pwm_set_wrap(slice_motor, wrap);
-//    pwm_set_chan_level(slice_motor, PWM_CHAN_A, 0);
-//    pwm_set_chan_level(slice_motor, PWM_CHAN_B, 0);
-//    pwm_set_enabled(slice_motor, true);
-//
-//    right_aile_pulse_prev = PWM_MID_PULSEWIDTH;
-//}
-//
-//void pwm_set_right_elevon(uint16_t pulse_width) {
-//    uint16_t level = pwm_pulse_width_to_level(pulse_width);
-//    pwm_set_chan_level(slice_elevon, PWM_CHAN_A, level);
-//}
-//
-//void pwm_set_left_elevon(uint16_t pulse_width) {
-//    uint16_t level = pwm_pulse_width_to_level(pulse_width);
-//    pwm_set_chan_level(slice_elevon, PWM_CHAN_B, level);
-//}
-//
-//void pwm_set_right_motor(uint16_t pulse_width) {
-//    uint16_t level = pwm_pulse_width_to_level(pulse_width);
-//    pwm_set_chan_level(slice_motor, PWM_CHAN_A, level);
-//}
-//
-//void pwm_set_left_motor(uint16_t pulse_width) {
-//    uint16_t level = pwm_pulse_width_to_level(pulse_width);
-//    pwm_set_chan_level(slice_motor, PWM_CHAN_B, level);
-//}

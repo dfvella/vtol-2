@@ -1,9 +1,19 @@
 add_executable(main
+    constants.h
     main.c
+    logging.h
+    logging.c
+    flight_controller.h
+    flight_controller.c
+    pwm.h
     pwm.c
+    pid_controller.h
+    pid_controller.c
+    fir_filter.h
+    fir_filter.c
 )
 
-pico_generate_pio_header(main ${CMAKE_CURRENT_LIST_DIR}/pwm.s)
+pico_generate_pio_header(main ${CMAKE_CURRENT_LIST_DIR}/pwm.S)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message("Enabling stdio over USB serial port")
@@ -19,6 +29,7 @@ pico_add_extra_outputs(main)
 
 target_link_libraries(main
     pico_stdlib
+    pico_multicore
     hardware_i2c
     hardware_pio
     mpu6050
