@@ -3,11 +3,11 @@
 
 #include "pico/stdlib.h"
 #include "pico/time.h"
-#include "pico/multicore.h"
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
 
 #include "constants.h"
+#include "timing.h"
 #include "flight_controller.h"
 #include "pwm.h"
 
@@ -17,45 +17,13 @@
 
 #define I2C_INST i2c0_inst
 
-#define STARTUP_PAUSE 5 // units: seconds
+#define STDIO_WAIT 2 // units: seconds
+#define USB_WAIT 3 // units: seconds
 
 #define LOOP_FREQ 250 // units: Hertz
 #define LOOP_PERIOD_US 1000000 / LOOP_FREQ // unit: microseconds
 
 #define ENABLE_ACTUATORS
-
-typedef enum {
-    INIT = 1,
-    RUN = 2,
-    WDR = 4
-} State;
-
-// Returns the absolute time since absolute time t in microseconds
-static inline int64_t absolute_time_since_us(absolute_time_t t) {
-    return absolute_time_diff_us(t, get_absolute_time());
-}
-
-// Blocks calling thread to regulate the frequency of a loop. If the
-// loop frequency is less than freq, the function returns the loop period.
-// Otherwise the function returns 0.
-// freq units: Hz
-static int32_t set_loop_freq(int freq) {
-    static absolute_time_t time;
-    static bool start = true;
-
-    int period_us = 1000000 / freq;
-
-    if (start) {
-        start = false;
-        time = get_absolute_time();
-        return 0;
-    } else {
-        int64_t diff_us = absolute_time_since_us(time);
-        while (absolute_time_since_us(time) < period_us);
-        time = get_absolute_time();
-        return (int32_t)diff_us;
-    }
-}
 
 static int init_all(i2c_inst_t* i2c, mpu6050_inst_t* mpu, ar610_inst_t* ar) {
     // Initialize status led
@@ -68,6 +36,10 @@ static int init_all(i2c_inst_t* i2c, mpu6050_inst_t* mpu, ar610_inst_t* ar) {
     gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA_PIN);
     gpio_pull_up(I2C_SCL_PIN);
+
+    // Initialize flash logging
+    PRINTF_DEBUG("Initializing flash logging...\n");
+    init_logging();
 
     // Initialize radio receiver
     PRINTF_DEBUG("initializing the radio receiver...\n");
@@ -110,6 +82,7 @@ void run(mpu6050_inst_t *mpu, ar610_inst_t *ar) {
 
     absolute_time_t var = get_absolute_time();
 
+    Loop_Timer loop_timer = create_loop_timer(LOOP_FREQ);
     for (;;) {
         int imu_error = mpu6050_update_state(mpu);
         if (imu_error) {
@@ -147,13 +120,14 @@ void run(mpu6050_inst_t *mpu, ar610_inst_t *ar) {
                 pwm_set_left_elevon(fc_output.left_elevon);
                 pwm_set_right_motor(fc_output.right_motor);
                 pwm_set_left_motor(fc_output.left_motor);
-#           endif
+#           endif // ENABLE_ACTUATORS
+            do_logging();
             break;
         };
 
         run_state = (run_state + 1) % 5;
 
-        int32_t loop_period_us = set_loop_freq(LOOP_FREQ);
+        int32_t loop_period_us = set_loop_freq(&loop_timer);
         if (loop_period_us > LOOP_PERIOD_US) {
             gpio_put(STATUS_LED_PIN, true);
             fc_flags |= FC_OVERRUN;
@@ -176,8 +150,8 @@ int main(void) {
     i2c_inst_t *i2c = &I2C_INST;
 
     stdio_init_all();
-
-    int ch = getchar_timeout_us(STARTUP_PAUSE * 1000000);
+    sleep_ms(STDIO_WAIT * 1000);
+    int ch = getchar_timeout_us(USB_WAIT * 1000000);
 
     if (ch == PICO_ERROR_TIMEOUT) {
 #       ifdef DEBUG
@@ -186,20 +160,15 @@ int main(void) {
             printf("Starting flight controller in NORMAL mode\n");
 #       endif
 
-
         // initialize hardware
         int init_error = init_all(i2c, &mpu, &ar610);
         if (init_error) {
             return 1;
         }
 
-        // start logger on core1
-        multicore_launch_core1(do_logging);
-
         // run the flight_controller
         run(&mpu, &ar610);
     } else {
-        printf("Dumping logs over usb...\n");
         dump_logs();
     }
 

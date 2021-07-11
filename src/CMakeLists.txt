@@ -1,6 +1,8 @@
 add_executable(main
     constants.h
     main.c
+    timing.h
+    timing.c
     logging.h
     logging.c
     flight_controller.h
@@ -29,9 +31,10 @@ pico_add_extra_outputs(main)
 
 target_link_libraries(main
     pico_stdlib
-    pico_multicore
     hardware_i2c
     hardware_pio
+    hardware_flash
+    hardware_sync
     mpu6050
     ar610
 )
