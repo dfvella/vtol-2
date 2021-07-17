@@ -78,7 +78,7 @@ void run(mpu6050_inst_t *mpu, ar610_inst_t *ar) {
 
     static Fc_Flags fc_flags = 0;
     static Fc_Input fc_input;
-    static Fc_Output fc_output;
+    static const Fc_Output *fc_output;
 
     absolute_time_t var = get_absolute_time();
 
@@ -116,10 +116,10 @@ void run(mpu6050_inst_t *mpu, ar610_inst_t *ar) {
             break;
         case RUN_SERV_SET:
 #           ifdef ENABLE_ACTUATORS
-                pwm_set_right_elevon(fc_output.right_elevon);
-                pwm_set_left_elevon(fc_output.left_elevon);
-                pwm_set_right_motor(fc_output.right_motor);
-                pwm_set_left_motor(fc_output.left_motor);
+                pwm_set_right_elevon(fc_output->right_elevon);
+                pwm_set_left_elevon(fc_output->left_elevon);
+                pwm_set_right_motor(fc_output->right_motor);
+                pwm_set_left_motor(fc_output->left_motor);
 #           endif // ENABLE_ACTUATORS
             do_logging();
             break;

@@ -12,8 +12,8 @@
 
 #define PRINT_INPUTS
 #define PRINT_ORIENTATION
-//#define PRINT_TARGETS
-//#define PRINT_PIDS
+#define PRINT_TARGETS
+#define PRINT_PIDS
 #define PRINT_OUTPUTS
 #define PRINT_CTRL_MODE
 #define PRINT_FLIGHT_MODE
@@ -26,7 +26,8 @@
 
 #ifdef DEBUG
 #   define PRINTF_DEBUG(f, ...) \
-        printf(f, ##__VA_ARGS__)
+        printf(f, ##__VA_ARGS__); \
+        stdio_flush()
 #else
 #   define PRINTF_DEBUG(f, ...)
 #endif

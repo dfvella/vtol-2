@@ -19,7 +19,12 @@
 #define FC_HORZ_TSTATE FC_MIN_TSTATE
 #define FC_VERT_TSTATE FC_MAX_TSTATE
 
+#define FC_MIN_INPUT -100
+#define FC_CEN_INPUT 0
+#define FC_MAX_INPUT 100
+
 #define FC_MIN_OUTPUT -100
+#define FC_CEN_OUTPUT 0
 #define FC_MAX_OUTPUT 100
 
 #define FC_DEAD_STICK 5
@@ -116,6 +121,13 @@ typedef struct {
 } Fc_Pid_Output;
 
 typedef struct {
+    float thro;
+    float roll;
+    float pitch;
+    float yaw;
+} Fc_Command;
+
+typedef struct {
     float right_elevon;
     float left_elevon;
     float right_motor;
@@ -124,14 +136,21 @@ typedef struct {
 } Fc_Output;
 
 typedef struct {
+    Fc_Input input;
+    Fc_Flags flags;
+
     Fc_Ctrl_Mode ctrl_mode;
     Fc_Flight_Mode flight_mode;
+
+    float roll;
+    float pitch;
+    float yaw;
 
     float target_roll;
     float target_pitch;
     float target_yaw;
 
-    // number between 0 and 100 inclusive
+    // number between 0 and 90 inclusive
     // 0 - in horizontal flight mode
     // 90 - in vertical flight mode
     // other values indicate transition between flight modes
@@ -142,20 +161,12 @@ typedef struct {
     pid_inst_t pid_pitch;
     pid_inst_t pid_yaw;
 
-    float pid_output_roll;
-    float pid_output_pitch;
-    float pid_output_yaw;
+    Fc_Pid_Output pid_out;
 
-    // save most recent input/outputs for logging
-    Fc_Input input;
-    Fc_Flags flags;
     Fc_Output output;
-    float roll;
-    float pitch;
-    float yaw;
 } Fc_State;
 
-Fc_Output fc_calc(const Fc_Input* input, Fc_Flags flags);
+const Fc_Output *fc_calc(const Fc_Input* input, Fc_Flags flags);
 const Fc_State *fc_get_state(void);
 
 #endif // __FLIGHT_CONTROLLER_H__

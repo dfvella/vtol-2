@@ -114,7 +114,7 @@ static Fc_Flight_Mode get_flight_mode(const Fc_Input *input, Fc_Flags flags) {
     if ((flags & FC_RX_FAILED) && (flags & FC_IMU_FAILED)) {
         mode = FC_FMODE_DISABLED;
     }
-    if ((flags & FC_RX_FAILED) || (flags & FC_IMU_FAILED)) {
+    else if ((flags & FC_RX_FAILED) || (flags & FC_IMU_FAILED)) {
         mode = FC_FMODE_HORIZONTAL;
     }
 
@@ -353,119 +353,98 @@ static inline bool use_horz_ctrls(float tstate) {
     return tstate < FC_MAX_TSTATE / 2;
 }
 
-static float map_right_elevon(const Fc_Pid_Output *input, float tstate) {
-    float output = input->pitch;
+static float map_right_elevon(const Fc_Command *command, float tstate) {
+    float output = command->pitch;
 
     if (use_horz_ctrls(tstate)) {
-        output += input->roll;
+        output += command->roll;
     } else {
-        output -= input->yaw;
+        output -= command->yaw;
     }
 
-    return output;
+    return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
 
-static float map_left_elevon(const Fc_Pid_Output *input, float tstate) {
-    float output = input->pitch;
+static float map_left_elevon(const Fc_Command *command, float tstate) {
+    float output = command->pitch;
 
     if (use_horz_ctrls(tstate)) {
-        output -= input->roll;
+        output -= command->roll;
     } else {
-        output += input->yaw;
+        output += command->yaw;
     }
 
-    return output;
+    return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
 
-static float map_right_motor(const Fc_Pid_Output *input, float tstate) {
-    float output = input->thro;
+static float map_right_motor(const Fc_Command *command, float tstate) {
+    float output = command->thro;
 
     if (use_horz_ctrls(tstate)) {
-        output -= input->yaw * FC_HORZ_YAW_DIFF;
+        output -= command->yaw * FC_HORZ_YAW_DIFF;
     } else {
-        output -= input->roll * FC_VERT_ROLL_DIFF;
+        output -= command->roll * FC_VERT_ROLL_DIFF;
     }
 
-    return output;
+    return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
 
-static float map_left_motor(const Fc_Pid_Output *input, float tstate) {
-    float output = input->thro;
+static float map_left_motor(const Fc_Command *command, float tstate) {
+    float output = command->thro;
 
     if (use_horz_ctrls(tstate)) {
-        output += input->yaw * FC_HORZ_YAW_DIFF;
+        output += command->yaw * FC_HORZ_YAW_DIFF;
     } else {
-        output += input->roll * FC_VERT_ROLL_DIFF;
+        output += command->roll * FC_VERT_ROLL_DIFF;
     }
 
-    return output;
+    return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
 
 static float map_gear(float tstate) {
+    float output;
+
     if (tstate < FC_MAX_TSTATE / 2) {
-        return FC_MIN_OUTPUT;
+        output = FC_MIN_OUTPUT;
     } else {
-        return interpolate(tstate,
+        output = interpolate(tstate,
             FC_MAX_TSTATE / 2, FC_MAX_TSTATE,
             FC_MIN_OUTPUT, FC_MAX_OUTPUT
         );
     }
+
+    return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
 
-Fc_Output fc_calc(const Fc_Input *input, Fc_Flags flags) {
-    fc.ctrl_mode = get_ctrl_mode(input, flags);
-    fc.flight_mode = get_flight_mode(input, flags);
+static Fc_Output get_output(
+    const Fc_Input *input,
+    const Fc_Pid_Output *pid_out,
+    Fc_Ctrl_Mode ctrl_mode,
+    float tstate
+) {
+    Fc_Output output;
+    Fc_Command command;
 
-    fc.tstate = get_transition_state(fc.tstate, fc.flight_mode);
+    command.thro = input->thro;
 
-    // compensate pitch based on transition state.
-    quaternion_t q = quaternion_rotate_pitch(&input->orientation, fc.tstate * -1);
-    fc.roll = get_roll(&q);
-    fc.pitch = get_pitch(&q);
-    fc.yaw = get_yaw(&q);
-
-    fc.target_roll = get_target_roll(input->aile, fc.roll, fc.target_roll, fc.ctrl_mode);
-    fc.target_pitch = get_target_pitch(input->elev, fc.pitch, fc.target_pitch, fc.ctrl_mode);
-    fc.target_yaw = get_target_yaw(input->rudd, fc.yaw, fc.target_yaw, fc.ctrl_mode);
-
-    float error_roll = fc.target_roll - fc.roll;
-    float error_pitch = fc.target_pitch - fc.pitch;
-    float error_yaw = fc.target_yaw - fc.yaw;
-
-    fc.pid_output_roll = get_roll_pid(&fc.pid_roll, error_roll, fc.tstate);
-    fc.pid_output_pitch = get_pitch_pid(&fc.pid_pitch, error_pitch, fc.tstate);
-    fc.pid_output_yaw = get_yaw_pid(&fc.pid_yaw, error_yaw, fc.tstate);
-
-    Fc_Pid_Output pid_out;
-
-    pid_out.thro = input->thro;
-
-    switch (fc.ctrl_mode) {
+    switch (ctrl_mode) {
     case FC_CTRL_MANUAL:
-        pid_out.roll = input->aile;
-        pid_out.pitch = input->elev;
-        pid_out.yaw = input->rudd;
+        command.roll = input->aile;
+        command.pitch = input->elev;
+        command.yaw = input->rudd;
         break;
     default:
-        pid_out.roll = fc.pid_output_roll;
-        pid_out.pitch = fc.pid_output_pitch;
-        pid_out.yaw = fc.pid_output_yaw;
+        command.roll = pid_out->roll;
+        command.pitch = pid_out->pitch;
+        command.yaw = pid_out->yaw;
         break;
     }
 
-    // constrain pid outputs and raw inputs
-    pid_out.thro = constrain_output(pid_out.thro);
-    pid_out.roll = constrain_output(pid_out.roll);
-    pid_out.pitch = constrain_output(pid_out.pitch);
-    pid_out.yaw = constrain_output(pid_out.yaw);
-
-    Fc_Output output;
-
-    output.right_elevon = map_right_elevon(&pid_out, fc.tstate);
-    output.left_elevon = map_left_elevon(&pid_out, fc.tstate);
-    output.right_motor = map_right_motor(&pid_out, fc.tstate);
-    output.left_motor = map_left_motor(&pid_out, fc.tstate);
-    output.gear = map_gear(fc.tstate);
+    output.right_elevon = map_right_elevon(&command, tstate);
+    output.left_elevon = map_left_elevon(&command, tstate);
+    output.right_motor = map_right_motor(&command, tstate);
+    output.left_motor = map_left_motor(&command, tstate);
+    output.gear = map_gear(tstate);
 
     // only enable throttle mixing if there is some input throttle
     if (input->thro < FC_MIN_OUTPUT + FC_DEAD_STICK) {
@@ -473,17 +452,51 @@ Fc_Output fc_calc(const Fc_Input *input, Fc_Flags flags) {
         output.left_motor = FC_MIN_OUTPUT;
     }
 
-    output.right_elevon = constrain_output(output.right_elevon);
-    output.left_elevon = constrain_output(output.left_elevon);
-    output.right_motor = constrain_output(output.right_motor);
-    output.left_motor = constrain_output(output.left_motor);
-    output.gear = constrain_output(output.gear);
+    return output;
+}
 
+const Fc_Output *fc_calc(const Fc_Input *input, Fc_Flags flags) {
     fc.input = *input;
-    fc.output = output;
     fc.flags = flags;
 
-    return output;
+    fc.ctrl_mode = get_ctrl_mode(&fc.input, fc.flags);
+    fc.flight_mode = get_flight_mode(&fc.input, fc.flags);
+
+    if (fc.flight_mode == FC_FMODE_DISABLED || fc.flags & FC_RX_FAILED) {
+        fc.input.thro = FC_MIN_INPUT;
+        fc.input.aile = FC_CEN_INPUT;
+        fc.input.elev = FC_CEN_INPUT;
+        fc.input.rudd = FC_CEN_INPUT;
+    }
+
+    fc.tstate = get_transition_state(fc.tstate, fc.flight_mode);
+
+    // compensate pitch based on transition state.
+    quaternion_t q = quaternion_rotate_pitch(&fc.input.orientation, fc.tstate * -1);
+
+    fc.roll = get_roll(&q);
+    fc.pitch = get_pitch(&q);
+    fc.yaw = get_yaw(&q);
+
+    fc.target_roll = get_target_roll(fc.input.aile, fc.roll, fc.target_roll, fc.ctrl_mode);
+    fc.target_pitch = get_target_pitch(fc.input.elev, fc.pitch, fc.target_pitch, fc.ctrl_mode);
+    fc.target_yaw = get_target_yaw(fc.input.rudd, fc.yaw, fc.target_yaw, fc.ctrl_mode);
+
+    float error_roll = fc.target_roll - fc.roll;
+    float error_pitch = fc.target_pitch - fc.pitch;
+    float error_yaw = fc.target_yaw - fc.yaw;
+
+    fc.pid_out.thro = fc.input.thro;
+    fc.pid_out.roll = get_roll_pid(&fc.pid_roll, error_roll, fc.tstate);
+    fc.pid_out.pitch = get_pitch_pid(&fc.pid_pitch, error_pitch, fc.tstate);
+    fc.pid_out.yaw = get_yaw_pid(&fc.pid_yaw, error_yaw, fc.tstate);
+
+    fc.output = get_output(&fc.input, &fc.pid_out, fc.ctrl_mode, fc.tstate);
+
+    // save original input for logging
+    fc.input = *input;
+
+    return &fc.output;
 }
 
 const Fc_State *fc_get_state(void) {

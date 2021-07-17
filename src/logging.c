@@ -29,17 +29,18 @@ static void print_state(const Fc_State* state) {
 #   endif // PRINT_TARGETS
 #   ifdef PRINT_PIDS
         printf("%f %f %f ",
-            state->pid_output_roll,
-            state->pid_output_pitch,
-            state->pid_output_yaw
+            state->pid_out.roll,
+            state->pid_out.pitch,
+            state->pid_out.yaw
         );
 #   endif // PRINT_PIDS
 #   ifdef PRINT_OUTPUTS
-        printf("%f %f %f %f ",
+        printf("%f %f %f %f %f ",
             state->output.right_elevon,
             state->output.left_elevon,
             state->output.right_motor,
-            state->output.left_motor
+            state->output.left_motor,
+            state->output.gear
         );
 #   endif // PRINT_OUTPUTS
 #   ifdef PRINT_CTRL_MODE
@@ -99,9 +100,9 @@ void do_logging(void) {
     log_data.target_pitch = state->target_pitch;
     log_data.target_yaw = state->target_yaw;
 
-    log_data.pid_roll = state->pid_output_roll;
-    log_data.pid_pitch = state->pid_output_pitch;
-    log_data.pid_yaw = state->pid_output_yaw;
+    log_data.pid_roll = state->pid_out.roll;
+    log_data.pid_pitch = state->pid_out.pitch;
+    log_data.pid_yaw = state->pid_out.yaw;
 
     log_data.output_right_elevon = state->output.right_elevon;
     log_data.output_left_elevon = state->output.left_elevon;
