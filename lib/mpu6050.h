@@ -52,7 +52,7 @@ extern "C" {
 #define MPU6050_REG_ACCEL_XOUT_H 0x3B
 
 /* units: microseconds */
-#define MPU6050_I2C_TIMEOUT_PRE_BYTE 150
+#define MPU6050_I2C_TIMEOUT_PRE_BYTE 500
 
 /********** MPU6050 POWER SETTINGS **********/
 #define MPU6050_COMMAND_POWER_ON 0b00000000

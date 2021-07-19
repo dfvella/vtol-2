@@ -3,8 +3,10 @@
 
 #include "pico/stdlib.h"
 #include "pico/time.h"
+#include "pico/bootrom.h"
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
+#include "hardware/watchdog.h"
 
 #include "constants.h"
 #include "timing.h"
@@ -23,7 +25,20 @@
 #define LOOP_FREQ 250 // units: Hertz
 #define LOOP_PERIOD_US 1000000 / LOOP_FREQ // unit: microseconds
 
+#define COMMAND_DUMP_LOGS 'd'
+#define COMMAND_REBOOT 'r'
+#define COMMAND_BOOTSEL 'b'
+
 #define ENABLE_ACTUATORS
+//#define PERF_CHECK
+
+static void reboot(void) {
+    watchdog_enable(1, 0);
+}
+
+static void bootsel(void) {
+    reset_usb_boot(0, 0);
+}
 
 static int init_all(i2c_inst_t* i2c, mpu6050_inst_t* mpu, ar610_inst_t* ar) {
     // Initialize status led
@@ -38,11 +53,11 @@ static int init_all(i2c_inst_t* i2c, mpu6050_inst_t* mpu, ar610_inst_t* ar) {
     gpio_pull_up(I2C_SCL_PIN);
 
     // Initialize flash logging
-    PRINTF_DEBUG("Initializing flash logging...\n");
+    PRINTF_DEBUG("info: initializing flash logging ...\n");
     init_logging();
 
     // Initialize radio receiver
-    PRINTF_DEBUG("initializing the radio receiver...\n");
+    PRINTF_DEBUG("info: initializing radio receiver ...\n");
     ar610_init(ar,
         AR610_THRO_PIN,
         AR610_AILE_PIN,
@@ -53,11 +68,11 @@ static int init_all(i2c_inst_t* i2c, mpu6050_inst_t* mpu, ar610_inst_t* ar) {
     );
 
     // Initialize pwm outputs
-    PRINTF_DEBUG("initializing pwm outputs...\n");
+    PRINTF_DEBUG("info: initializing pwm outputs ...\n");
     pwm_init_all_outputs();
 
     // Initialize IMU
-    PRINTF_DEBUG("initializing the imu ...\n");
+    PRINTF_DEBUG("info: initializing imu ...\n");
     uint8_t imu_error = mpu6050_init(mpu, i2c, STATUS_LED_PIN);
     if (imu_error) {
         PRINTF_DEBUG("error: the imu was not found on the bus\n");
@@ -121,13 +136,30 @@ void run(mpu6050_inst_t *mpu, ar610_inst_t *ar) {
                 pwm_set_right_motor(fc_output->right_motor);
                 pwm_set_left_motor(fc_output->left_motor);
 #           endif // ENABLE_ACTUATORS
-            do_logging();
+#           ifndef PERF_CHECK
+                do_logging();
+#           endif // PERF_CHECK
             break;
         };
 
         run_state = (run_state + 1) % 5;
 
+#       ifdef DEBUG
+            int32_t timeout_us = LOOP_PERIOD_US - get_time_spent_us(&loop_timer) - 500;
+            if (timeout_us > 0) {
+                char ch = getchar_timeout_us(timeout_us);
+                if (ch == COMMAND_REBOOT) {
+                    reboot();
+                } else if (ch == COMMAND_BOOTSEL) {
+                    bootsel();
+                }
+            }
+#       endif // DEBUG
+
         int32_t loop_period_us = set_loop_freq(&loop_timer);
+#       ifdef PERF_CHECK
+            printf("info: state %d period %d\n", run_state, loop_period_us);
+#       endif // PERF_CHECK
         if (loop_period_us > LOOP_PERIOD_US) {
             gpio_put(STATUS_LED_PIN, true);
             fc_flags |= FC_OVERRUN;
@@ -149,28 +181,35 @@ int main(void) {
     ar610_inst_t ar610;
     i2c_inst_t *i2c = &I2C_INST;
 
+    bool start = true;
+
     stdio_init_all();
     sleep_ms(STDIO_WAIT * 1000);
-    int ch = getchar_timeout_us(USB_WAIT * 1000000);
 
-    if (ch == PICO_ERROR_TIMEOUT) {
-#       ifdef DEBUG
-            printf("Starting flight controller in DEBUG mode\n");
-#       else
-            printf("Starting flight controller in NORMAL mode\n");
-#       endif
+    for (;;) {
+        int ch = getchar_timeout_us(USB_WAIT * 1000000);
 
-        // initialize hardware
-        int init_error = init_all(i2c, &mpu, &ar610);
-        if (init_error) {
-            return 1;
+        if (ch == COMMAND_DUMP_LOGS) {
+            dump_logs();
+        } else if (ch == COMMAND_REBOOT) {
+            reboot();
+        } else if (ch == COMMAND_BOOTSEL) {
+            bootsel();
+        } else if (start && ch == PICO_ERROR_TIMEOUT) {
+            PRINTF_DEBUG("info: starting flight controller\n");
+
+            // initialize hardware
+            int init_error = init_all(i2c, &mpu, &ar610);
+            if (init_error) {
+                reboot();
+            }
+
+            // run the flight_controller
+            run(&mpu, &ar610);
+        } else {
+            PRINTF_DEBUG("error: unrecognized command\n");
         }
 
-        // run the flight_controller
-        run(&mpu, &ar610);
-    } else {
-        dump_logs();
+        start = false;
     }
-
-    return 0;
 }

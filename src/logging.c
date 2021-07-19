@@ -3,6 +3,7 @@
 static uint8_t buffer[FLASH_PAGE_SIZE];
 
 static void print_state(const Fc_State* state) {
+    printf("log: ");
 #   ifdef PRINT_INPUTS
         printf("%f %f %f %f %f %f ",
             state->input.thro,

@@ -15,21 +15,24 @@ Loop_Timer create_loop_timer(int freq) {
     return ret;
 }
 
-// Blocks calling thread to regulate the frequency of a loop. If the
-// loop frequency is less than freq, the function returns the loop period.
-// Otherwise the function returns 0.
-// freq units: Hz
+// Returns the time spent so far in the current loop iteration.
+int32_t get_time_spent_us(Loop_Timer *lt) {
+    return (int32_t) absolute_time_since_us(lt->time);
+}
+
+// Blocks calling thread to regulate the frequency of a loop. Returns the time
+// since the function was last called in microseconds.
 int32_t set_loop_freq(Loop_Timer *lt) {
     if (lt->start) {
         lt->start = false;
         lt->time = get_absolute_time();
         return 0;
     } else {
-        int64_t diff_us = absolute_time_since_us(lt->time);
+        int32_t diff_us = get_time_spent_us(lt);
         while (absolute_time_since_us(lt->time) < lt->period_us) {
             tight_loop_contents();
         }
         lt->time = get_absolute_time();
-        return (int32_t)diff_us;
+        return diff_us;
     }
 }
