@@ -482,9 +482,9 @@ const Fc_Output *fc_calc(const Fc_Input *input, Fc_Flags flags) {
     fc.target_pitch = get_target_pitch(fc.input.elev, fc.pitch, fc.target_pitch, fc.ctrl_mode);
     fc.target_yaw = get_target_yaw(fc.input.rudd, fc.yaw, fc.target_yaw, fc.ctrl_mode);
 
-    float error_roll = fc.target_roll - fc.roll;
-    float error_pitch = fc.target_pitch - fc.pitch;
-    float error_yaw = fc.target_yaw - fc.yaw;
+    float error_roll = constrain_angle(fc.target_roll - fc.roll);
+    float error_pitch = constrain_angle(fc.target_pitch - fc.pitch);
+    float error_yaw = constrain_angle(fc.target_yaw - fc.yaw);
 
     fc.pid_out.thro = fc.input.thro;
     fc.pid_out.roll = get_roll_pid(&fc.pid_roll, error_roll, fc.tstate);
