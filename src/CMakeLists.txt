@@ -1,40 +1,55 @@
-add_executable(main
-    constants.h
-    main.c
-    timing.h
-    timing.c
-    logging.h
-    logging.c
-    flight_controller.h
-    flight_controller.c
-    pwm.h
-    pwm.c
-    pid_controller.h
-    pid_controller.c
-    fir_filter.h
-    fir_filter.c
-)
+########### Add Libraries ##########
+add_library(fir_filter fir_filter.h fir_filter.c)
+add_library(flight_controller flight_controller.h flight_controller.c)
+add_library(logging logging.h logging.c)
+add_library(pid_controller pid_controller.h pid_controller.c)
+add_library(pwm pwm.h pwm.c)
+add_library(reboot reboot.h reboot.c)
 
-pico_generate_pio_header(main ${CMAKE_CURRENT_LIST_DIR}/pwm.S)
+########## Add Exetuables ##########
+add_executable(main main.c constants.h)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message("Enabling stdio over USB serial port")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
-    pico_enable_stdio_usb(main 1)
-else()
-    pico_enable_stdio_usb(main 0)
-endif()
+########## Pico Config pwm ##########
+pico_generate_pio_header(pwm ${CMAKE_CURRENT_LIST_DIR}/pwm.S)
 
+########## Pico Config main ##########
+pico_enable_stdio_usb(main 1)
 pico_enable_stdio_uart(main 0)
-
 pico_add_extra_outputs(main)
 
-target_link_libraries(main
+########## Link Libraries ##########
+target_link_libraries(fir_filter
     pico_stdlib
-    hardware_i2c
-    hardware_pio
+)
+target_link_libraries(flight_controller
+    pico_stdlib
+    3dmath
+    pid_controller
+)
+target_link_libraries(logging
+    pico_stdlib
     hardware_flash
     hardware_sync
+    flight_controller
+)
+target_link_libraries(pid_controller
+    pico_stdlib
+    fir_filter
+)
+target_link_libraries(pwm
+    pico_stdlib
+    hardware_pio
+)
+target_link_libraries(reboot
+    pico_stdlib
+)
+target_link_libraries(main
+    pico_stdlib
+    hardware_gpio
+    hardware_i2c
     mpu6050
     ar610
+    logging
+    pwm
+    reboot
 )

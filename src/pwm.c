@@ -28,6 +28,14 @@ static void pwm_set_wrap(PIO pio, uint sm, uint32_t period) {
     pio_sm_set_enabled(pio, sm, true);
 }
 
+// call at the start of main or motor controllers will enter a failure state
+void pwm_esc_patch() {
+    gpio_init(RIGHT_MOTOR_PIN);
+    gpio_init(LEFT_MOTOR_PIN);
+    gpio_set_dir(RIGHT_MOTOR_PIN, GPIO_OUT);
+    gpio_set_dir(LEFT_MOTOR_PIN, GPIO_OUT);
+}
+
 // Initialize gpio pins and PIO state machines
 void pwm_init_all_outputs() {
     counter_wrap = clock_get_hz(clk_sys) / (PWM_CYCLES * PWM_FREQUENCY);
@@ -122,4 +130,12 @@ void pwm_set_left_motor(float input) {
 
     uint32_t level = pwm_pulse_width_to_level(pulse_width);
     pio_sm_put(pio0, PWM_SM_LEFT_MOTOR, level);
+}
+
+// Set the PWM hardware to 0% dutycycle on all channels
+void pwm_disable_all_outputs() {
+    pio_sm_put(pio0, PWM_SM_RIGHT_ELEVON, 0);
+    pio_sm_put(pio0, PWM_SM_LEFT_ELEVON, 0);
+    pio_sm_put(pio0, PWM_SM_RIGHT_MOTOR, 0);
+    pio_sm_put(pio0, PWM_SM_LEFT_MOTOR, 0);
 }

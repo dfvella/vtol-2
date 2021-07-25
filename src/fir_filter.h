@@ -3,6 +3,10 @@
 
 #include "pico/stdlib.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #define FIR_BUFFER_SIZE 10
 
 typedef struct {
@@ -17,5 +21,9 @@ typedef struct {
 void fir_filter_init(fir_inst_t *filter, const float *response);
 void fir_filter_flush(fir_inst_t *filter);
 float fir_filter_calculate(fir_inst_t *filter, float input);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // __FIR_FILTER_H__

@@ -204,25 +204,20 @@ static float get_target_yaw(float input, float curr, float target, Fc_Ctrl_Mode 
 
 static int8_t get_transition_state(int8_t state, Fc_Flight_Mode mode) {
     static bool start = true;
+    static uint8_t counter = 0;
 
     if (start) {
         start = false;
-
-        switch (mode) {
-        case FC_FMODE_HORIZONTAL:
-            state =  FC_MIN_TSTATE;
-            break;
-        default:
-            state = FC_MAX_TSTATE;
-            break;
-        }
+        state = 0;
     } else {
         switch (mode) {
         case FC_FMODE_HORIZONTAL:
             --state;
             break;
         default:
-            ++state;
+            if (counter++ % 2) {
+                ++state;
+            }
             break;
         }
     }
@@ -456,20 +451,36 @@ static Fc_Output get_output(
 }
 
 const Fc_Output *fc_calc(const Fc_Input *input, Fc_Flags flags) {
+    static bool start = true;
+    if (start) {
+        fc.waiting = true;
+        start = false;
+    }
+
     fc.input = *input;
     fc.flags = flags;
 
     fc.ctrl_mode = get_ctrl_mode(&fc.input, fc.flags);
     fc.flight_mode = get_flight_mode(&fc.input, fc.flags);
+    fc.tstate = get_transition_state(fc.tstate, fc.flight_mode);
 
-    if (fc.flight_mode == FC_FMODE_DISABLED || fc.flags & FC_RX_FAILED) {
+    if (fc.waiting) {
+        if ((fc.tstate == 0) &&
+            (fc.flight_mode == FC_FMODE_HORIZONTAL) &&
+            (fc.ctrl_mode == FC_CTRL_MANUAL)) {
+            fc.waiting = false;
+        } else {
+            fc.flight_mode = FC_FMODE_DISABLED;
+            fc.flags |= FC_WAITING;
+        }
+    }
+
+    if ((fc.flight_mode == FC_FMODE_DISABLED) || (fc.flags & FC_RX_FAILED)) {
         fc.input.thro = FC_MIN_INPUT;
         fc.input.aile = FC_CEN_INPUT;
         fc.input.elev = FC_CEN_INPUT;
         fc.input.rudd = FC_CEN_INPUT;
     }
-
-    fc.tstate = get_transition_state(fc.tstate, fc.flight_mode);
 
     // compensate pitch based on transition state.
     quaternion_t q = quaternion_rotate_pitch(&fc.input.orientation, fc.tstate * -1);

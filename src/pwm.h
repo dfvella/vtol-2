@@ -4,7 +4,8 @@
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #include "hardware/pio.h"
-#include "pwm.S.h"
+
+#include "../build/src/pwm.S.h"
 
 #include "constants.h"
 
@@ -45,6 +46,13 @@
 #define PWM_PIO_RIGHT_MOTOR pio0 // PIO block assignment
 #define PWM_PIO_LEFT_MOTOR pio0 // PIO block assignment
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+// call at the start of main or motor controllers will enter a failure state
+void pwm_esc_patch();
+
 // Initialize gpio pins and PIO state machines
 void pwm_init_all_outputs();
 
@@ -67,5 +75,12 @@ void pwm_set_right_motor(float input);
 // An input of -100 commands the motor to not turn
 // An input of 100 commands the motor to turn at max speed
 void pwm_set_left_motor(float input);
+
+// Set the PWM hardware to 0% dutycycle on all channels
+void pwm_disable_all_outputs();
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // __PWM_H__

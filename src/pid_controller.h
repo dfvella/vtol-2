@@ -8,6 +8,10 @@
 
 #define PID_MAX_OUTPUT 100
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 typedef struct {
     float p;
     float i;
@@ -28,5 +32,9 @@ typedef struct {
 void pid_init(pid_inst_t *pid, float p, float i, float d, float i_max);
 void pid_set_gains(pid_inst_t *pid, float p, float i, float d, float i_max);
 float pid_calculate(pid_inst_t *pid, float error);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // __PID_CONTROLLER_H__

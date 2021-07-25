@@ -6,6 +6,10 @@
 
 #define RADIANS_PER_DEGREE 0.01745329f
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 struct quaternion {
     float w;
     float x;
@@ -65,5 +69,9 @@ float quaternion_get_pitch(const quaternion_t* q);
  * -180 < yaw < 180
  */
 float quaternion_get_yaw(const quaternion_t* q);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif /* __3D_MATH_H__ */

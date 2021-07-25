@@ -24,13 +24,9 @@
 #define LOG_FLASH_START 128 * 1024 // units: bytes
 #define LOG_FLASH_SIZE_BYTES (PICO_FLASH_SIZE_BYTES - LOG_FLASH_START)
 
-#ifdef DEBUG
-#   define PRINTF_DEBUG(f, ...) \
-        printf(f, ##__VA_ARGS__); \
-        stdio_flush()
-#else
-#   define PRINTF_DEBUG(f, ...)
-#endif
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 typedef struct {
     float current_roll;
@@ -67,6 +63,10 @@ typedef struct {
 void init_logging(void);
 void do_logging(void);
 void dump_logs(void);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #if defined(PRINT_INPUTS) || \
     defined(PRINT_ORIENTATION) || \

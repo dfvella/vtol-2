@@ -1,10 +1,9 @@
 #ifndef __FLIGHT_CONTROLLER_H__
 #define __FLIGHT_CONTROLLER_H__
 
-#include <mpu6050.h>
+#include <3dmath.h>
 
 #include "pico/stdlib.h"
-
 #include "pid_controller.h"
 
 // Three position switch thresholds
@@ -56,7 +55,7 @@
 #define FC_HORZ_PITCH_D     0.0
 #define FC_HORZ_PITCH_I_MAX 1.0
 
-#define FC_HORZ_YAW_P       3.0
+#define FC_HORZ_YAW_P       0.5
 #define FC_HORZ_YAW_I       0.0
 #define FC_HORZ_YAW_D       0.0
 #define FC_HORZ_YAW_I_MAX   1.0
@@ -72,7 +71,7 @@
 #define FC_VERT_PITCH_D     0.0
 #define FC_VERT_PITCH_I_MAX 1.0
 
-#define FC_VERT_YAW_P       3.0
+#define FC_VERT_YAW_P       0.5
 #define FC_VERT_YAW_I       0.0
 #define FC_VERT_YAW_D       0.0
 #define FC_VERT_YAW_I_MAX   1.0
@@ -81,12 +80,17 @@
 #define FC_HORZ_YAW_DIFF    0.2
 #define FC_VERT_ROLL_DIFF   0.2
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 typedef enum {
     FC_RX_FAILED = 1,
     FC_IMU_FAILED = 2,
     FC_BMP_FAILED = 4,
     FC_WD_REBOOT = 8,
-    FC_OVERRUN = 16
+    FC_OVERRUN = 16,
+    FC_WAITING = 32
 } Fc_Flags;
 
 typedef enum {
@@ -164,9 +168,15 @@ typedef struct {
     Fc_Pid_Output pid_out;
 
     Fc_Output output;
+
+    bool waiting;
 } Fc_State;
 
 const Fc_Output *fc_calc(const Fc_Input* input, Fc_Flags flags);
 const Fc_State *fc_get_state(void);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // __FLIGHT_CONTROLLER_H__
