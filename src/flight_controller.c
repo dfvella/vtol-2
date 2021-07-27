@@ -345,7 +345,7 @@ float get_yaw(const quaternion_t *q) {
 }
 
 static inline bool use_horz_ctrls(float tstate) {
-    return tstate < FC_MAX_TSTATE / 2;
+    return tstate < FC_TSTATE_CTRL_THRESHOLD;
 }
 
 static float map_right_elevon(const Fc_Command *command, float tstate) {
@@ -354,7 +354,7 @@ static float map_right_elevon(const Fc_Command *command, float tstate) {
     if (use_horz_ctrls(tstate)) {
         output += command->roll;
     } else {
-        output -= command->yaw;
+        output -= command->roll;
     }
 
     return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
@@ -366,7 +366,7 @@ static float map_left_elevon(const Fc_Command *command, float tstate) {
     if (use_horz_ctrls(tstate)) {
         output -= command->roll;
     } else {
-        output += command->yaw;
+        output += command->roll;
     }
 
     return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
@@ -375,11 +375,7 @@ static float map_left_elevon(const Fc_Command *command, float tstate) {
 static float map_right_motor(const Fc_Command *command, float tstate) {
     float output = command->thro;
 
-    if (use_horz_ctrls(tstate)) {
-        output -= command->yaw * FC_HORZ_YAW_DIFF;
-    } else {
-        output -= command->roll * FC_VERT_ROLL_DIFF;
-    }
+    output -= command->yaw * FC_YAW_DIFFERENTIAL;
 
     return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
@@ -387,11 +383,7 @@ static float map_right_motor(const Fc_Command *command, float tstate) {
 static float map_left_motor(const Fc_Command *command, float tstate) {
     float output = command->thro;
 
-    if (use_horz_ctrls(tstate)) {
-        output += command->yaw * FC_HORZ_YAW_DIFF;
-    } else {
-        output += command->roll * FC_VERT_ROLL_DIFF;
-    }
+    output += command->yaw * FC_YAW_DIFFERENTIAL;
 
     return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
@@ -399,11 +391,11 @@ static float map_left_motor(const Fc_Command *command, float tstate) {
 static float map_gear(float tstate) {
     float output;
 
-    if (tstate < FC_MAX_TSTATE / 2) {
+    if (tstate < FC_TSTATE_CTRL_THRESHOLD) {
         output = FC_MIN_OUTPUT;
     } else {
         output = interpolate(tstate,
-            FC_MAX_TSTATE / 2, FC_MAX_TSTATE,
+            FC_TSTATE_CTRL_THRESHOLD, FC_MAX_TSTATE,
             FC_MIN_OUTPUT, FC_MAX_OUTPUT
         );
     }
@@ -418,20 +410,32 @@ static Fc_Output get_output(
     float tstate
 ) {
     Fc_Output output;
+
+    // NOTE: command is always with reference to horizontal flight
     Fc_Command command;
 
     command.thro = input->thro;
 
     switch (ctrl_mode) {
     case FC_CTRL_MANUAL:
-        command.roll = input->aile;
         command.pitch = input->elev;
-        command.yaw = input->rudd;
+        if (use_horz_ctrls(tstate)) {
+            command.roll = input->aile;
+            command.yaw = input->rudd;
+        } else {
+            command.roll = input->rudd;
+            command.yaw = input->aile;
+        }
         break;
     default:
-        command.roll = pid_out->roll;
         command.pitch = pid_out->pitch;
-        command.yaw = pid_out->yaw;
+        if (use_horz_ctrls(tstate)) {
+            command.roll = pid_out->roll;
+            command.yaw = pid_out->yaw;
+        } else {
+            command.roll = pid_out->yaw;
+            command.yaw = pid_out->roll;
+        }
         break;
     }
 

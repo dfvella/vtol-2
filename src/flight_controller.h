@@ -17,6 +17,7 @@
 #define FC_MAX_TSTATE 90
 #define FC_HORZ_TSTATE FC_MIN_TSTATE
 #define FC_VERT_TSTATE FC_MAX_TSTATE
+#define FC_TSTATE_CTRL_THRESHOLD 45
 
 #define FC_MIN_INPUT -100
 #define FC_CEN_INPUT 0
@@ -61,7 +62,9 @@
 #define FC_HORZ_YAW_I_MAX   1.0
 
 // ********** Vertical Flight PID Gains ********** //
-#define FC_VERT_ROLL_P      3.0
+// NOTE: vertical roll == horizontal yaw
+//       vertical yaw == horizontal roll
+#define FC_VERT_ROLL_P      0.5
 #define FC_VERT_ROLL_I      0.0
 #define FC_VERT_ROLL_D      0.0
 #define FC_VERT_ROLL_I_MAX  1.0
@@ -71,14 +74,13 @@
 #define FC_VERT_PITCH_D     0.0
 #define FC_VERT_PITCH_I_MAX 1.0
 
-#define FC_VERT_YAW_P       0.5
+#define FC_VERT_YAW_P       3.0
 #define FC_VERT_YAW_I       0.0
 #define FC_VERT_YAW_D       0.0
 #define FC_VERT_YAW_I_MAX   1.0
 
 // ********** Control Map/Mix Gains ********** //
-#define FC_HORZ_YAW_DIFF    0.2
-#define FC_VERT_ROLL_DIFF   0.2
+#define FC_YAW_DIFFERENTIAL 0.2
 
 #ifdef __cplusplus
 extern "C" {
