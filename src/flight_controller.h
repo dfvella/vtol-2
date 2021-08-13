@@ -64,23 +64,24 @@
 // ********** Vertical Flight PID Gains ********** //
 // NOTE: vertical roll == horizontal yaw
 //       vertical yaw == horizontal roll
-#define FC_VERT_ROLL_P      0.5
+#define FC_VERT_ROLL_P      0.1
 #define FC_VERT_ROLL_I      0.0
-#define FC_VERT_ROLL_D      0.0
+#define FC_VERT_ROLL_D      0.5
 #define FC_VERT_ROLL_I_MAX  1.0
 
 #define FC_VERT_PITCH_P     3.0
 #define FC_VERT_PITCH_I     0.0
-#define FC_VERT_PITCH_D     0.0
+#define FC_VERT_PITCH_D     0.2
 #define FC_VERT_PITCH_I_MAX 1.0
 
 #define FC_VERT_YAW_P       3.0
 #define FC_VERT_YAW_I       0.0
-#define FC_VERT_YAW_D       0.0
+#define FC_VERT_YAW_D       0.2
 #define FC_VERT_YAW_I_MAX   1.0
 
 // ********** Control Map/Mix Gains ********** //
 #define FC_YAW_DIFFERENTIAL 0.2
+#define FC_YAW_TRIM -18
 
 #ifdef __cplusplus
 extern "C" {

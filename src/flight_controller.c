@@ -376,6 +376,7 @@ static float map_right_motor(const Fc_Command *command, float tstate) {
     float output = command->thro;
 
     output -= command->yaw * FC_YAW_DIFFERENTIAL;
+    output -= FC_YAW_TRIM / 2.0f;
 
     return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
@@ -384,6 +385,7 @@ static float map_left_motor(const Fc_Command *command, float tstate) {
     float output = command->thro;
 
     output += command->yaw * FC_YAW_DIFFERENTIAL;
+    output += FC_YAW_TRIM / 2.0f;
 
     return constrainf(output, FC_MIN_OUTPUT, FC_MAX_OUTPUT);
 }
@@ -471,7 +473,8 @@ const Fc_Output *fc_calc(const Fc_Input *input, Fc_Flags flags) {
     if (fc.waiting) {
         if ((fc.tstate == 0) &&
             (fc.flight_mode == FC_FMODE_HORIZONTAL) &&
-            (fc.ctrl_mode == FC_CTRL_MANUAL)) {
+            (fc.ctrl_mode == FC_CTRL_MANUAL) &&
+            (fc.input.thro < FC_MIN_INPUT + FC_DEAD_STICK)) {
             fc.waiting = false;
         } else {
             fc.flight_mode = FC_FMODE_DISABLED;
