@@ -1,111 +1,38 @@
 #!/bin/sh
 
-# cmake wrapper for vtol-2 project
+# A script for flashing the Raspberry Pi Pico
 
-SRC_DIR=/home/david/projects/vtol-2
 BUILD_DIR=/home/david/projects/vtol-2/build
-BUILD_CFG=Debug
-BUILD_TAR=all
+BUILD_TAR=main
 
-MSG_HELP="cmake wrapper for vtol-2 project
-  -b,--build    path to build directory
-  -c,--config   cmake build type: Debug or Release
-  -t,--target   build target or phony target all
-  -h,--help     display this help message"
-
-OPTIONS='c:t:h'
-LONGOPT='config:,target:,help'
-
-getopt --test &> /dev/null
-if [ $? -ne 4 ]; then
-    echo "error: getopt not available in this environment"
-    exit 1
+if [ -n "$1" ]; then
+    BUILD_TAR="$1"
 fi
 
-PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPT --name $0 -- $@)
-if [ $? -ne 0 ]; then
-    exit 1
-fi
-eval set -- "$PARSED"
-
-while true; do
-    case "$1" in
-        -c|--config)
-            BUILD_CFG="$2"
-            shift 2
-            ;;
-        -t|--target)
-            BUILD_TAR="$2"
-            shift 2
-            ;;
-        -h|--help)
-            echo "$MSG_HELP"
-            exit 0
-            ;;
-        --)
-            shift
-            break
-            ;;
-    esac
-done
-
-# configure cmake project
-(set -x ; cmake -DCMAKE_BUILD_TYPE:STRING=$BUILD_CFG -B $BUILD_DIR -S $SRC_DIR) || exit 1
-
-# build cmake project
-(set -x ; cmake --build $BUILD_DIR --config $BUILD_CFG --target $BUILD_TAR) || exit 1
-
-# flash the board if it is connected over USB
 DEVICE_PATH=$(find /dev -wholename '/dev/sd[a-b]1')
 MOUNT_PATH=/dev/pico
 
-# if phony target all was used to build, flash board with main
-if [ "$BUILD_TAR" = "all" ]; then
-    BUILD_TAR=main
-fi
-
-if [ -n "$DEVICE_PATH" ]; then
-    echo "Found board $DEVICE_PATH"
-
-    TARGET_PATH=$(find $BUILD_DIR -name $BUILD_TAR.uf2)
-
-    if [ -z "$TARGET_PATH" ]; then
-        echo "error: failed to find target $BUILD_TAR.uf2"
-        exit 1
-    fi
-
-    echo "mounting $DEVICE_PATH to $MOUNT_PATH"
-    sudo mkdir -p $MOUNT_PATH
-    sudo mount $DEVICE_PATH $MOUNT_PATH || exit 1
-
-    echo "copying $TARGET_PATH to $MOUNT_PATH"
-    sudo cp $TARGET_PATH $MOUNT_PATH || exit 1
-    sudo sync
-
-    echo "un-mounting board at $DEVICE_PATH"
-    sudo umount $DEVICE_PATH
-
-    FLASHED=true
-else
-    echo "could not find board, compiling only"
-
-    FLASHED=false
-fi
-
-# check the size of the program
-TARGET_ELF=$(find $BUILD_DIR -name $BUILD_TAR.elf)
-
-if [ -z "$TARGET_ELF" ]; then
-    echo "error: failed to find target $BUILD_TAR.elf"
+if [ -z "$DEVICE_PATH" ]; then
+    echo "error: failed to find the board"
     exit 1
 fi
 
-PROGRAM_END=$(objdump --all $TARGET_ELF | grep flash_binary_end | cut -d' ' -f1)
-XIP_BASE="10000000"
-PROGRAM_SIZE=$((16#$PROGRAM_END - 16#$XIP_BASE))
+TARGET_PATH=$(find $BUILD_DIR -name $BUILD_TAR.uf2)
 
-echo "===== BUILD SUMMARY ====="
-echo "target  : $BUILD_TAR"
-echo "config  : $BUILD_CFG"
-echo "size    : $PROGRAM_SIZE Bytes"
-echo "flashed : $FLASHED"
+if [ -z "$TARGET_PATH" ]; then
+    echo "error: failed to find target $BUILD_TAR.uf2"
+    exit 1
+fi
+
+echo "mounting $DEVICE_PATH to $MOUNT_PATH"
+sudo mkdir -p $MOUNT_PATH
+sudo mount $DEVICE_PATH $MOUNT_PATH || exit 1
+
+echo "copying $TARGET_PATH to $MOUNT_PATH"
+sudo cp $TARGET_PATH $MOUNT_PATH || exit 1
+sudo sync
+
+echo "un-mounting board at $DEVICE_PATH"
+sudo umount $DEVICE_PATH
+
+exit 0
