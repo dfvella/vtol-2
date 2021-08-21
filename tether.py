@@ -4,6 +4,9 @@
 
 from serial import Serial, SerialException
 from time import sleep
+from sys import argv
+
+USAGE = f'usage: {argv[0]} [--format-csv <file>]'
 
 SERIAL_PORT = '/dev/ttyACM0'
 BAUD_RATE = 115200
@@ -24,6 +27,8 @@ DATA_LABELS = ' '.join([
     'fl'
 ])
 
+csv_file = None
+
 def format_d(val: str) -> str:
     ret = [ ' ' for _ in range(WIDTH_D - len(val)) ]
     ret.append(val)
@@ -40,15 +45,18 @@ def is_data_line(line: str) -> bool:
 def format_line(line: str) -> str:
     if is_data_line(line):
         line = line.replace(DATA_NEEDLE, '')
-        data = []
-        for val in line.split():
-            if '.' in val:
-                s = format_f(val)
-            else:
-                s = format_d(val)
-            data.append(s)
-        data = ' '.join(data)
-        return f'\r{data}\n{DATA_LABELS}\r'
+        if csv_file is not None:
+            return line.replace(' ', ', ') + '\n'
+        else:
+            data = []
+            for val in line.split():
+                if '.' in val:
+                    s = format_f(val)
+                else:
+                    s = format_d(val)
+                data.append(s)
+            data = ' '.join(data)
+            return f'\r{data}\n{DATA_LABELS}\r'
     else:
         return f'{line}\n'
 
@@ -64,6 +72,7 @@ def open_port(ser: Serial, port: str) -> None:
 
 def read_port(ser: Serial) -> None:
     line = ''
+    count = 1
     while ser.isOpen():
         try:
             line = ser.readline().decode('utf-8').strip()
@@ -74,7 +83,13 @@ def read_port(ser: Serial) -> None:
         else:
             line = format_line(line)
         finally:
-            print(line, end='')
+            if csv_file is not None:
+                csv_file.write(line)
+                print(f'\rlines read: {count}\r', end='')
+            else:
+                print(line, end='')
+        count += 1
+    print('')
 
 def close_port(ser: Serial) -> None:
     if ser.isOpen():
@@ -82,6 +97,15 @@ def close_port(ser: Serial) -> None:
         print(f'closed port {ser.port}')
 
 def main() -> None:
+    if len(argv) != 1 and len(argv) != 3:
+        exit(USAGE)
+    elif len(argv) == 3 and argv[1] != '--format-csv':
+        exit(USAGE)
+    elif len(argv) > 1 and argv[1] == '--format-csv':
+        global csv_file
+        csv_file = open(argv[2], 'w')
+        csv_file.write(', '.join(DATA_LABELS.split()) + '\n')
+
     ser = Serial(baudrate=BAUD_RATE)
 
     try:
@@ -91,6 +115,9 @@ def main() -> None:
         print('')
     finally:
         close_port(ser)
+
+    if csv_file is not None:
+        csv_file.close()
 
 if __name__ == '__main__':
     main()
