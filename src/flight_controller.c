@@ -474,6 +474,7 @@ const Fc_Output *fc_calc(const Fc_Input *input, Fc_Flags flags) {
         if ((fc.tstate == 0) &&
             (fc.flight_mode == FC_FMODE_HORIZONTAL) &&
             (fc.ctrl_mode == FC_CTRL_MANUAL) &&
+            (!(fc.flags & FC_RX_FAILED)) &&
             (fc.input.thro < FC_MIN_INPUT + FC_DEAD_STICK)) {
             fc.waiting = false;
         } else {
