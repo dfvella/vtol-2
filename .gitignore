@@ -1,3 +1,7 @@
 .vscode/
 build/
+logs/*
+!logs/*.csv
+tests/sim_input.h
+tests/sim_output.csv
 compile_commands.json

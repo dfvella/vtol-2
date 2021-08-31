@@ -64,7 +64,7 @@ def read_port(ser: Serial) -> None:
                 f.write(f'{t:.2f}, {line}')
             except UnicodeDecodeError:
                 f.write('failed to decode line\n')
-            print(f'\r{p}%', end='', flush=True)
+            print(f'\rretrieving logs: {p}%', end='', flush=True)
         print('\nfinished')
 
 def close_port(ser: Serial) -> None:
